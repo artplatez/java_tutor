@@ -1,0 +1,239 @@
+<%# encoding: utf-8 %>
+<%# app/views/lessons/show.html.erb %>
+
+<%# ── 左パネル：解説 ──────────────────────────────────────────────────── %>
+<div class="lesson-panel" id="leftPanel">
+
+  <div class="lesson-hero">
+    <div class="lesson-emoji"><%= @lesson[:icon] %></div>
+
+    <div class="lesson-meta">
+      <%
+        tag_css = case @lesson[:tag]
+          when "入門"           then "tag-nyumon"
+          when "中級"           then "tag-chukyu"
+          when "オブジェクト指向" then "tag-oop"
+          else "tag-nyumon"
+        end
+      %>
+      <span class="lesson-tag <%= tag_css %>"><%= @lesson[:tag] %></span>
+      <div class="lesson-title"><%= @lesson[:title] %></div>
+      <div class="lesson-subtitle"><%= @lesson[:subtitle] %></div>
+    </div>
+
+    <div class="lesson-progress"><%= @lesson[:id] %>&nbsp;/&nbsp;<%= @all_lessons.length %></div>
+  </div>
+
+  <div class="content">
+    <%= @lesson[:explanation].html_safe %>
+  </div>
+
+</div>
+
+<%# ── 左右ドラッグバー ────────────────────────────────────────────────── %>
+<div class="drag-bar" id="dragBar"></div>
+
+<%# ── 右パネル：エディタ＋出力 ──────────────────────────────────────── %>
+<div class="right-panel">
+
+  <%# エディタ（上半分） %>
+  <div class="editor-wrap" id="editorWrap">
+    <div class="panel-bar">
+      <div class="bar-label">
+        <span class="lang-dot"></span>
+        コードエディタ
+        <span class="file-chip">Main.java</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> で実行</span>
+        <button class="run-btn" id="runBtn" onclick="submitCode()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          実行して確認
+        </button>
+      </div>
+    </div>
+
+    <textarea
+      id="codeArea"
+      class="code-area"
+      spellcheck="false"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      placeholder="// ここにJavaコードを書いてください...
+//
+// public class Main {
+//     public static void main(String[] args) {
+//         // 解答をここに書く
+//     }
+// }"></textarea>
+  </div>
+
+  <%# 上下ドラッグバー %>
+  <div class="drag-bar-h" id="dragBarH"></div>
+
+  <%# 出力（下半分） %>
+  <div class="output-wrap" id="outputWrap">
+    <div class="panel-bar">
+      <div class="bar-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <polyline points="8 21 12 17 16 21"/>
+        </svg>
+        実行結果
+      </div>
+      <button onclick="clearOutput()"
+        style="background:none;border:none;font-family:var(--jp);font-size:10px;
+               font-weight:700;color:var(--text-dim);cursor:pointer;letter-spacing:.05em;">
+        クリア
+      </button>
+    </div>
+
+    <div class="output-body" id="outputBody">
+      <p class="idle-msg">「実行して確認」ボタンを押すと、ここに結果が表示されます</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const LESSON_ID    = <%= @lesson[:id] %>;
+  const EVALUATE_URL = '<%= evaluate_lesson_path(@lesson[:id]) %>';
+  const CSRF_TOKEN   = '<%= form_authenticity_token %>';
+
+  /* ── コード送信 ─────────────────────────────────────────────────────── */
+  async function submitCode() {
+    const code = document.getElementById('codeArea').value.trim();
+    const btn  = document.getElementById('runBtn');
+    const out  = document.getElementById('outputBody');
+
+    if (!code) {
+      out.innerHTML = '<p class="idle-msg" style="color:var(--aka)">⚠ コードを入力してください！</p>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '⏳ 確認中...';
+    out.innerHTML = '<p class="idle-msg">判定中...</p>';
+
+    try {
+      const res = await fetch(EVALUATE_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+        body:    JSON.stringify({ code })
+      });
+      const data = await res.json();
+      renderResult(data);
+    } catch(e) {
+      out.innerHTML = '<p class="idle-msg" style="color:var(--aka)">⚠ ネットワークエラーが発生しました。再試行してください。</p>';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> 実行して確認';
+    }
+  }
+
+  /* ── 結果カード描画 ──────────────────────────────────────────────────── */
+  function renderResult(data) {
+    const out = document.getElementById('outputBody');
+    const cls  = data.correct ? 'seikai' : 'fusei';
+    const icon = data.correct ? '🎉' : '❌';
+
+    // 正解時：出力を1つ表示
+    let outputHtml = '';
+    if (data.correct && data.output) {
+      outputHtml = `
+        <div style="margin-top:8px">
+          <div style="font-size:10px;font-family:var(--jp);color:var(--text-dim);margin-bottom:3px;letter-spacing:.05em">実行出力</div>
+          <div style="padding:7px 10px;background:rgba(0,0,0,.3);border-radius:6px;
+                      font-family:var(--mono);font-size:12px;color:var(--midori);
+                      border:1px solid var(--border);white-space:pre-wrap">${esc(data.output)}</div>
+        </div>`;
+    }
+
+    // 不正解時：実際の出力と期待値を並べて比較
+    let diffHtml = '';
+    if (!data.correct) {
+      diffHtml = `
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div style="font-size:10px;font-family:var(--jp);color:var(--text-dim);
+                        margin-bottom:3px;letter-spacing:.05em">あなたのコードの出力</div>
+            <div style="padding:7px 10px;background:rgba(0,0,0,.3);border-radius:6px;
+                        font-family:var(--mono);font-size:12px;color:var(--aka);
+                        border:1px solid rgba(248,113,113,.2);white-space:pre-wrap;
+                        min-height:32px">${esc(data.output || '（出力なし）')}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-family:var(--jp);color:var(--text-dim);
+                        margin-bottom:3px;letter-spacing:.05em">期待する出力</div>
+            <div style="padding:7px 10px;background:rgba(0,0,0,.3);border-radius:6px;
+                        font-family:var(--mono);font-size:12px;color:var(--midori);
+                        border:1px solid rgba(74,222,128,.2);white-space:pre-wrap;
+                        min-height:32px">${esc(data.expected_output)}</div>
+          </div>
+        </div>`;
+    }
+
+    let hintHtml = '';
+    if (!data.correct && data.tip) {
+      hintHtml = `<div class="hint-box">${esc(data.tip)}</div>`;
+    }
+
+    out.innerHTML = `
+      <div class="result-card ${cls}">
+        <div class="result-head">${icon}&nbsp;${esc(data.feedback)}</div>
+        <div class="result-body">
+          <div class="result-text">
+            ${ data.correct
+                ? '出力が一致しました！'
+                : '出力が期待する結果と異なります。比較してみましょう。'
+            }
+          </div>
+          ${outputHtml}
+          ${diffHtml}
+          ${hintHtml}
+        </div>
+      </div>`;
+
+    if (data.correct) confetti();
+  }
+
+  /* ── 紙吹雪 ──────────────────────────────────────────────────────────── */
+  function confetti() {
+    const host   = document.getElementById('outputBody');
+    const colors = ['#FF6B8A','#4ADE80','#60A5FA','#FBBF24','#A78BFA','#34D399'];
+    for (let i = 0; i < 30; i++) {
+      const el = document.createElement('div');
+      el.className = 'cf';
+      const size = 5 + Math.random() * 7;
+      el.style.cssText = `
+        left:${Math.random()*100}%;top:0;
+        width:${size}px;height:${size}px;
+        background:${colors[i % colors.length]};
+        border-radius:${Math.random()>.5?'50%':'2px'};
+        animation-delay:${(Math.random()*.5).toFixed(2)}s;
+        animation-duration:${(.7+Math.random()*.5).toFixed(2)}s;
+      `;
+      host.appendChild(el);
+      setTimeout(() => el.remove(), 1500);
+    }
+  }
+
+  function clearOutput() {
+    document.getElementById('outputBody').innerHTML =
+      '<p class="idle-msg">「実行して確認」ボタンを押すと、ここに結果が表示されます</p>';
+  }
+
+  function esc(s) {
+    return String(s||'')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+      .replace(/\n/g,'<br>');
+  }
+
+  document.getElementById('codeArea').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submitCode(); }
+  });
+</script>

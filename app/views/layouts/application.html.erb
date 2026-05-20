@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Javaチュートリアル — ステップで学ぶJava入門</title>
+
+  <%# 日本語に適したフォント：Noto Sans JP（ウェイト可変・漢字が日本語JIS準拠） %>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════════
+       デザイントークン
+    ═══════════════════════════════════════════════════════════════════════ */
+    :root {
+      /* カラーパレット */
+      --bg:          #0C0E18;
+      --surface:     #13162280;
+      --surface-s:   #131622;
+      --surface2:    #1A1E2E;
+      --surface3:    #20253A;
+      --border:      #4a4c53;
+      --border2:     #303756;
+
+      --text:        #E2E6F8;
+      --text-sub:    #8892B8;
+      --text-dim:    #656b85;
+
+      /* アクセントカラー */
+      --sakura:      #FF6B8A;       /* 桜ピンク — プライマリ */
+      --sakura-soft: rgba(255,107,138,0.14);
+      --sakura-glow: rgba(255,107,138,0.06);
+
+      --midori:      #4ADE80;       /* 緑 — 正解 */
+      --midori-soft: rgba(74,222,128,0.13);
+      --aka:         #F87171;       /* 赤 — 不正解 */
+      --aka-soft:    rgba(248,113,113,0.13);
+      --ki:          #FBBF24;       /* 黄 — ヒント */
+      --ao:          #60A5FA;       /* 青 — コード */
+
+      /* タイポグラフィ */
+      --jp:   'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+      --mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+
+      /* サイズ */
+      --radius:    10px;
+      --radius-sm: 6px;
+      --topbar-h:  54px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--jp);
+      font-feature-settings: "palt" 1;   /* 日本語プロポーショナル詰め */
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       アプリシェル
+    ═══════════════════════════════════════════════════════════════════════ */
+    .app {
+      display: grid;
+      grid-template-rows: var(--topbar-h) 1fr;
+      width: 100vw;
+      max-width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       トップバー
+    ═══════════════════════════════════════════════════════════════════════ */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+      width: 100%;
+      min-width: 0;
+      background: var(--surface-s);
+      border-bottom: 1px solid var(--border);
+      z-index: 20;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-family: var(--jp);
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .logo-badge {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: var(--sakura);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .logo em { color: var(--sakura); font-style: normal; }
+
+    .sep {
+      width: 1px; height: 26px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ── 進捗バー（横スクロール） ───────────────────────────────────────── */
+    .progress-scroll {
+      flex: 1;
+      overflow-x: scroll;    /* scroll = スクロールバーを常に表示（autoは内容が収まると非表示になる） */
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) var(--surface2);
+      padding-bottom: 2px;
+    }
+
+    .progress-scroll::-webkit-scrollbar {
+      height: 6px;           /* 少し太くして視認しやすく */
+    }
+    .progress-scroll::-webkit-scrollbar-track {
+      background: var(--surface2);
+      border-radius: 3px;
+    }
+    .progress-scroll::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px;
+    }
+    .progress-scroll::-webkit-scrollbar-thumb:hover {
+      background: var(--text-dim);
+    }
+
+    .progress-track {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      width: max-content;   /* はみ出してもスクロール */
+      padding: 6px 4px 2px;
+    }
+
+    .step-node {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .step-connector {
+      width: 14px; height: 1px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .step-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 11px 4px 7px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--jp);
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .step-btn:hover {
+      border-color: var(--border2);
+      color: var(--text-sub);
+    }
+
+    .step-btn.active {
+      background: var(--sakura-soft);
+      border-color: var(--sakura);
+      color: var(--sakura);
+    }
+
+    .step-num {
+      width: 17px; height: 17px;
+      border-radius: 50%;
+      background: var(--sakura);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px;
+      font-weight: 800;
+      font-family: var(--mono);
+      flex-shrink: 0;
+    }
+
+    /* ── ナビ矢印 ─────────────────────────────────────────────────────── */
+    .topbar-nav {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      font-family: var(--jp);
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--sakura);
+      color: var(--sakura);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       メインの2カラムレイアウト
+    ═══════════════════════════════════════════════════════════════════════ */
+    .split {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    /* 左右ドラッグバー */
+    .drag-bar {
+      width: 5px;
+      flex-shrink: 0;
+      background: var(--border);
+      cursor: col-resize;
+      transition: background 0.15s;
+      position: relative;
+      z-index: 10;
+    }
+    .drag-bar:hover, .drag-bar.dragging { background: var(--sakura); }
+
+    /* 上下ドラッグバー */
+    .drag-bar-h {
+      height: 5px;
+      flex-shrink: 0;
+      background: var(--border);
+      cursor: row-resize;
+      transition: background 0.15s;
+      position: relative;
+      z-index: 10;
+    }
+    .drag-bar-h:hover, .drag-bar-h.dragging { background: var(--sakura); }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       左パネル（解説）
+    ═══════════════════════════════════════════════════════════════════════ */
+    .lesson-panel {
+      overflow-y: auto;
+      padding: 26px 28px 48px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      background:
+        radial-gradient(ellipse 60% 35% at 5% 0%, rgba(255,107,138,0.04) 0%, transparent 70%),
+        var(--bg);
+      width: 50%;
+      flex-shrink: 0;
+      min-width: 150px;
+    }
+
+    /* レッスンヘッダー */
+    .lesson-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 13px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .lesson-emoji {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .lesson-meta { flex: 1; min-width: 0; }
+
+    .lesson-tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--jp);
+      letter-spacing: 0.08em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+
+    .tag-nyumon      { background: var(--midori-soft);  color: var(--midori); }
+    .tag-chukyu      { background: var(--sakura-soft);  color: var(--sakura); }
+    .tag-oop         { background: rgba(167,139,250,0.14); color: #A78BFA; }
+
+    .lesson-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+    }
+
+    .lesson-subtitle {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    .lesson-progress {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+      flex-shrink: 0;
+      align-self: flex-start;
+    }
+
+    /* ── コンテンツスタイル ──────────────────────────────────────────────── */
+    .content h2 {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--jp);
+      letter-spacing: 0.12em;
+      color: var(--sakura);
+      margin: 22px 0 9px;
+      text-transform: none;
+    }
+
+    .content h2:first-child { margin-top: 0; }
+
+    .content p {
+      font-size: 13.5px;
+      line-height: 1.85;
+      color: #BEC5E0;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    .content ul {
+      list-style: none;
+      margin: 6px 0 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .content ul li {
+      font-size: 13px;
+      color: #BEC5E0;
+      padding: 5px 10px 5px 26px;
+      position: relative;
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      border-left: 2px solid var(--border2);
+      line-height: 1.65;
+      letter-spacing: 0.02em;
+    }
+
+    .content ul li::before {
+      content: '▸';
+      position: absolute;
+      left: 9px;
+      color: var(--sakura);
+      font-size: 11px;
+    }
+
+    .content pre {
+      background: #080A13;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin: 10px 0 14px;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    .content pre::after {
+      content: 'Java';
+      position: absolute;
+      top: 8px; right: 12px;
+      font-size: 9px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    .content pre code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: #93BDFF;
+      line-height: 1.75;
+    }
+
+    .content p code, .content li code {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--ao);
+      background: rgba(96,165,250,0.1);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* コピーボタン */
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 5px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-family: var(--jp);
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      user-select: none;
+      margin-bottom: 4px;
+      margin-left: auto;
+    }
+    .copy-btn:hover {
+      border-color: var(--sakura);
+      color: var(--sakura);
+      background: var(--surface3);
+    }
+    .copy-btn.copied {
+      border-color: var(--midori);
+      color: var(--midori);
+      background: var(--surface3);
+    }
+
+    /* 練習問題ボックス */
+    .exercise-box {
+      margin-top: 18px;
+      padding: 15px;
+      background: var(--sakura-glow);
+      border: 1px solid rgba(255,107,138,0.2);
+      border-radius: var(--radius);
+    }
+
+    .exercise-box h2 { margin-top: 0 !important; }
+    .exercise-box pre { background: rgba(0,0,0,0.3); border-color: rgba(255,107,138,0.12); }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       右パネル（エディタ＋出力）
+    ═══════════════════════════════════════════════════════════════════════ */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #080A13;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* エディタ上部 */
+    .editor-wrap {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 60%;
+      min-height: 80px;
+      flex-shrink: 0;
+    }
+
+    .panel-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      height: 40px;
+      background: var(--surface-s);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .bar-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--jp);
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+    }
+
+    .lang-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--sakura);
+    }
+
+    .file-chip {
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text-sub);
+      padding: 2px 7px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .kbd-hint {
+      font-size: 10px;
+      font-family: var(--jp);
+      color: var(--text-dim);
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 9px;
+    }
+
+    .run-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      background: var(--sakura);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--jp);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.05em;
+    }
+
+    .run-btn:hover  { background: #FF8FAA; transform: translateY(-1px); }
+    .run-btn:active { transform: none; }
+    .run-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* コードテキストエリア */
+    .code-area {
+      flex: 1;
+      background: #070911;
+      color: #A8C4FF;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.8;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 15px 18px;
+      tab-size: 4;
+      caret-color: var(--sakura);
+    }
+
+    .code-area::placeholder { color: #5e6479; }
+    .code-area:focus { box-shadow: inset 3px 0 0 var(--sakura); }
+
+    /* 出力下部 */
+    .output-wrap {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex: 1;
+      min-height: 60px;
+    }
+
+    .output-body {
+      flex: 1;
+      padding: 13px 16px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      position: relative;
+    }
+
+    .idle-msg {
+      font-family: var(--jp);
+      font-size: 12px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 0.03em;
+    }
+
+    .idle-msg::before { content: '>'; color: var(--border2); font-family: var(--mono); font-size: 15px; }
+
+    /* 結果カード */
+    .result-card {
+      border-radius: var(--radius);
+      border: 1px solid;
+      overflow: hidden;
+      animation: slideUp .2s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-card.seikai { border-color: rgba(74,222,128,.35); }
+    .result-card.fusei  { border-color: rgba(248,113,113,.35); }
+
+    .result-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      font-family: var(--jp);
+    }
+
+    .result-card.seikai .result-head { background: var(--midori-soft); color: var(--midori); }
+    .result-card.fusei  .result-head { background: var(--aka-soft);    color: var(--aka);    }
+
+    .result-body {
+      padding: 10px 14px;
+      background: rgba(0,0,0,.25);
+    }
+
+    .result-text {
+      font-size: 12.5px;
+      font-family: var(--jp);
+      color: var(--text-sub);
+      line-height: 1.65;
+      letter-spacing: 0.03em;
+    }
+
+    .hint-box {
+      margin-top: 9px;
+      padding: 8px 11px;
+      background: rgba(251,191,36,.07);
+      border-left: 2px solid var(--ki);
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-family: var(--jp);
+      color: var(--text-sub);
+      line-height: 1.6;
+      letter-spacing: 0.02em;
+    }
+
+    .hint-box::before {
+      content: '💡 ヒント：';
+      color: var(--ki);
+      font-weight: 700;
+    }
+
+    /* スクロールバー共通 */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* 紙吹雪アニメーション */
+    @keyframes cfFall {
+      0%   { transform: translateY(-8px) rotate(0deg);   opacity: 1; }
+      100% { transform: translateY(88px) rotate(540deg); opacity: 0; }
+    }
+
+    .cf {
+      position: absolute;
+      pointer-events: none;
+      animation: cfFall .9s ease-out forwards;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── トップバー ─────────────────────────────────────────────────────── -->
+  <header class="topbar">
+
+    <div class="logo">
+      <div class="logo-badge">☕</div>
+      Java<em>入門</em>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 横スクロール可能な進捗バー -->
+    <div class="progress-scroll">
+      <nav class="progress-track">
+        <% @all_lessons.each_with_index do |lesson, idx| %>
+          <%
+            is_active = defined?(@lesson) && @lesson && @lesson[:id] == lesson[:id]
+            css = is_active ? "active" : ""
+          %>
+          <div class="step-node">
+            <% if idx > 0 %>
+              <div class="step-connector"></div>
+            <% end %>
+            <a href="<%= lesson_path(lesson[:id]) %>"
+               class="step-btn <%= css %>"
+               title="<%= lesson[:title] %>">
+              <span class="step-num"><%= lesson[:id] %></span>
+              <%= lesson[:icon] %>
+              <%= lesson[:title] %>
+            </a>
+          </div>
+        <% end %>
+      </nav>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- 前へ / 次へ -->
+    <% if defined?(@lesson) && @lesson %>
+      <nav class="topbar-nav">
+        <% if @lesson[:id] > 1 %>
+          <a href="<%= lesson_path(@lesson[:id] - 1) %>" class="nav-btn">← 前へ</a>
+        <% end %>
+        <% if @lesson[:id] < @all_lessons.length %>
+          <a href="<%= lesson_path(@lesson[:id] + 1) %>" class="nav-btn">次へ →</a>
+        <% end %>
+      </nav>
+    <% end %>
+
+  </header>
+
+  <!-- ── メイン ─────────────────────────────────────────────────────────── -->
+  <main class="split" id="splitPane">
+    <%= yield %>
+  </main>
+
+</div>
+
+<!-- Tabキーでインデント / ドラッグ分割 / コピーボタン / ホイールスクロール -->
+<script>
+/* ── Tabキーでインデント ──────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.target.classList.contains('code-area') && e.key === 'Tab') {
+    e.preventDefault();
+    const s = e.target.selectionStart, en = e.target.selectionEnd;
+    e.target.value = e.target.value.slice(0, s) + '    ' + e.target.value.slice(en);
+    e.target.selectionStart = e.target.selectionEnd = s + 4;
+  }
+});
+
+/* ── 左右パネルのドラッグ分割 ────────────────────────────────────────── */
+(function() {
+  let dragging = false, startX = 0, startW = 0;
+  const bar   = document.getElementById('dragBar');
+  const left  = document.getElementById('leftPanel');
+  const split = document.getElementById('splitPane');
+  if (!bar || !left || !split) return;
+
+  bar.addEventListener('mousedown', function(e) {
+    dragging = true;
+    startX   = e.clientX;
+    startW   = left.getBoundingClientRect().width;
+    bar.classList.add('dragging');
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    const totalW = split.getBoundingClientRect().width;
+    const newW   = Math.min(Math.max(startW + (e.clientX - startX), totalW * 0.2), totalW * 0.8);
+    left.style.width = newW + 'px';
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (!dragging) return;
+    dragging = false;
+    bar.classList.remove('dragging');
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+/* ── エディタ↕出力の上下ドラッグ ────────────────────────────────────── */
+(function() {
+  let dragging = false, startY = 0, startH = 0;
+  const bar    = document.getElementById('dragBarH');
+  const editor = document.getElementById('editorWrap');
+  const right  = editor && editor.closest('.right-panel');
+  if (!bar || !editor || !right) return;
+
+  bar.addEventListener('mousedown', function(e) {
+    dragging = true;
+    startY   = e.clientY;
+    startH   = editor.getBoundingClientRect().height;
+    bar.classList.add('dragging');
+    document.body.style.cursor     = 'row-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    const totalH = right.getBoundingClientRect().height;
+    const newH   = Math.min(Math.max(startH + (e.clientY - startY), 80), totalH - 60);
+    editor.style.height = newH + 'px';
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (!dragging) return;
+    dragging = false;
+    bar.classList.remove('dragging');
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+/* ── 進捗バーのホイール横スクロール ──────────────────────────────────── */
+(function() {
+  const ps = document.querySelector('.progress-scroll');
+  if (!ps) return;
+  ps.addEventListener('wheel', function(e) {
+    if (e.deltaY === 0) return;
+    e.preventDefault();
+    ps.scrollLeft += e.deltaY;
+  }, { passive: false });
+})();
+
+/* ── コードブロックへのコピーボタン注入 ──────────────────────────────── */
+document.querySelectorAll('.content pre').forEach(function(pre) {
+  const btn = document.createElement('button');
+  btn.className   = 'copy-btn';
+  btn.textContent = 'コピー';
+  btn.addEventListener('click', function() {
+    const code = pre.querySelector('code');
+    const text = code ? code.innerText : pre.innerText;
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = '✓ コピーしました';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+    }).catch(function() {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = '✓ コピーしました';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
+  pre.parentNode.insertBefore(btn, pre);
+});
+</script>
+
+</body>
+</html>
