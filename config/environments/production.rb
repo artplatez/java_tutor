@@ -6,4 +6,5 @@ Rails.application.configure do
   config.log_tags         = [:request_id]
   config.cache_store      = :memory_store
   config.active_support.report_deprecations = false
+  config.active_storage.service = :local
 end
